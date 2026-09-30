@@ -1,7 +1,9 @@
 const uint8_t BTN_PIN = 2;    // Button on pin 2 = external interrupt INT0
 const uint8_t LED_PIN = 13;   // LED output pin
 
-// Shared between the ISR and loop(), so they must be volatile
+// Shared between the ISR and loop(), so they must be volatile to stop the compiler
+// caching these values in CPU registers; every read/write goes to RAM, so loop()
+// always sees the latest value written by the ISR
 volatile uint8_t ledState = LOW;
 volatile bool buttonEvent = false;           // flag set by the ISR
 volatile unsigned long lastInterruptTime = 0;
