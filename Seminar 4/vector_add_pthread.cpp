@@ -13,7 +13,7 @@
 using namespace std::chrono;
 using namespace std;
 
-// Shared (read-only pointers) between all threads
+// Shared (read-only pointers) between all threads, all thread can write only to it index range
 int *v1, *v2, *v3;
 
 // Work description for one thread: the half-open range [start, end) of indexes it owns
@@ -46,23 +46,24 @@ void *worker(void *arg)
         sum += v3[i];
     }
 
-    task->partialSum = sum;
+    task->partialSum = sum; //pass the sum back to task struct
     return NULL;
 }
 
 int main(int argc, char *argv[])
 {
-    int numThreads = (argc > 1) ? atoi(argv[1]) : 4;
-    unsigned long size = (argc > 2) ? strtoul(argv[2], NULL, 10) : 100000000;
-    if (numThreads < 1) numThreads = 1;
+    int numThreads = (argc > 1) ? atoi(argv[1]) : 4; //if the argument is include, take that as number of thread, otherwise, 4 will be by default
+    unsigned long size = (argc > 2) ? strtoul(argv[2], NULL, 10) : 100000000; //same as the thread number, if the size is include, take it, otherwise 100m is default
+    if (numThreads < 1) numThreads = 1; //if number of threads less than 1, it will be forced to be at least 1.
 
-    auto start = high_resolution_clock::now();
+    auto start = high_resolution_clock::now();// start the clock right before fire the first step
 
     // Sequential part: allocate the three vectors
     v1 = (int *)malloc(size * sizeof(int));
     v2 = (int *)malloc(size * sizeof(int));
     v3 = (int *)malloc(size * sizeof(int));
 
+    //1 thread will handle 1 task
     pthread_t *threads = new pthread_t[numThreads];
     Task *tasks = new Task[numThreads];
 
@@ -87,9 +88,9 @@ int main(int argc, char *argv[])
         pthread_join(threads[t], NULL);
         checksum += tasks[t].partialSum;
     }
-
+    //end the clock exactly when we have the result, so futher calculation time will not be included
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
+    auto duration = duration_cast<microseconds>(stop - start);// calculate duration and convert to ms
 
     // Verification (not timed): recompute the sum of v1 + v2 sequentially and compare
     long long expected = 0;
@@ -101,6 +102,6 @@ int main(int argc, char *argv[])
          << " | Check: " << (checksum == expected ? "PASS" : "FAIL") << endl;
 
     free(v1); free(v2); free(v3);
-    delete[] threads; delete[] tasks;
+    delete[] threads; delete[] tasks;// drop the memory to avoid leaking
     return 0;
 }
